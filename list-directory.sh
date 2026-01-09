@@ -15,7 +15,8 @@ show_help() {
     echo "Arguments:"
     echo "  directory_paths    One or more directory paths to display (optional)"
     echo "  directory:flags    Directory-specific flags using 'directory:flags' syntax"
-    echo "                     Example: 'pg_data:-d 1 -s' (depth 1, structure only)"
+    echo "                     IMPORTANT: Must be wrapped in double quotes for proper parsing"
+    echo "                     Example: \"pg_data:-d 1 -s\" (depth 1, structure only)"
     echo "  .                  Show current directory (can be combined with other paths)"
     echo
     echo "Options:"
@@ -49,8 +50,9 @@ show_help() {
     echo "  $0 src                                # Show src/ directory tree"
     echo "  $0 src lib                            # Show src/ and lib/ directory trees"
     echo "  $0 . src lib                          # Show current directory with src/ and lib/ prioritized"
-    echo "  $0 src pg_data:-d 1 -s logs:-f 2     # Show src/, pg_data with depth 1 structure-only,"
+    echo "  $0 src \"pg_data:-d 1 -s\" \"logs:-f 2\"  # Show src/, pg_data with depth 1 structure-only,"
     echo "                                        #   and logs with files only at depth 2"
+    echo "  $0 . \"./data:-d 1 -s\"                # Show current directory with data/ limited to depth 1"
     echo "  $0 -ff flags.txt                     # Load flags from flags.txt file"
     echo "  $0 -ff flags.txt src                 # Use flags file and show src/ directory"
     echo
