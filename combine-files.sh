@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+# If sourced (for bash function) vs executed directly
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    # The file is being sourced — define a function
+    combine_files() {
+        "$BASH_SOURCE" "$@"
+    }
+    return 0
+fi
+
 # Combine all text files from a given folder into one combined.txt file
 
 # --- Configuration & Defaults ---

@@ -1,7 +1,17 @@
 #!/bin/bash
 
+# If sourced (for bash function) vs executed directly
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    # The file is being sourced — define a function
+    list_dir() {
+        "$BASH_SOURCE" "$@"
+    }
+    return 0
+fi
+
 # Source debug function
 source "$(dirname "$0")/logging.sh"
+
 
 # Function to display help information
 show_help() {
