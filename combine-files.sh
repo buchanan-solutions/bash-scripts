@@ -1,17 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# If sourced (for bash function) vs executed directly
+# Combine all text files from a given folder into one combined.txt file
+
+# If sourced: only define the function, do not run code or enable strict mode
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    # The file is being sourced — define a function
     combine_files() {
         "$BASH_SOURCE" "$@"
     }
     return 0
 fi
 
-set -euo pipefail
-
-# Combine all text files from a given folder into one combined.txt file
+# --- Direct execution only below (strict mode not active when sourced) ---
 
 # --- Configuration & Defaults ---
 TARGET_PATHS=()
@@ -269,9 +268,15 @@ combine_files() {
     echo "File saved to: $output_file"
 }
 
-# --- Execution ---
+main() {
+    set -euo pipefail
+    parse_args "$@"
+    normalize_and_validate_paths
+    setup_ignore_patterns
+    combine_files
+}
 
-parse_args "$@"
-normalize_and_validate_paths
-setup_ignore_patterns
-combine_files
+# Only run main when executed directly (not when sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
