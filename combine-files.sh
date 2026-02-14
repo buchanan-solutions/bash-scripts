@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 # If sourced (for bash function) vs executed directly
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
@@ -9,6 +8,8 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     }
     return 0
 fi
+
+set -euo pipefail
 
 # Combine all text files from a given folder into one combined.txt file
 
