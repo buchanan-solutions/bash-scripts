@@ -7,7 +7,9 @@ for f in \
   combine-files.sh \
   dockersummary.sh \
   user_secrets.sh \
-  filesummary.sh
+  filesummary.sh \
+  list-directory.sh \
+  text-search.sh \
 do
   [ -f "$BASE_DIR/$f" ] && source "$BASE_DIR/$f"
 done
