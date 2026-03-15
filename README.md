@@ -2,7 +2,7 @@
 
 A collection of production-ready bash scripts for directory navigation, file manipulation, and project management tasks.
 
-## Installation
+## Quick Start
 
 Clone this repository into your home directory:
 
@@ -10,39 +10,22 @@ Clone this repository into your home directory:
 git clone https://github.com/buchanan-solutions/bash-scripts ~/scripts
 ```
 
-## Available Scripts
+Add the bootstrap script to your shell startup file so all commands and aliases are available in every new terminal:
 
-### `list-directory.sh`
-
-Prints a tree-like directory structure with visual connectors and proper indentation. Supports per-directory flags for fine-grained control over recursion behavior.
-
-**Features:**
-- Visual tree output with Unicode connectors (├──, └──)
-- Respects `.gitignore` rules when run in a Git repository
-- Per-directory depth limits and filtering options
-- Configurable via command-line flags or flags file
-
-**Usage:**
 ```bash
-# Show current directory
-~/scripts/list-directory.sh .
-
-# Show specific directories with depth limits
-~/scripts/list-directory.sh . "./data:-d 1 -s" "./logs:-d 2"
-
-# Use flags file
-~/scripts/list-directory.sh -ff flags.txt
+echo 'if [ -f "$HOME/scripts/bootstrap.sh" ]; then source "$HOME/scripts/bootstrap.sh"; fi' >> ~/.bashrc
 ```
 
-**Note:** Directory:flags arguments must be wrapped in double quotes for proper parsing (e.g., `"./data:-d 1 -s"`).
+Reload your current terminal session so the changes take effect immediately:
 
-### `combine-files.sh`
-
-Combines all text files from a given directory into a single `combined.txt` file with configurable ignore patterns.
-
-**Usage:**
 ```bash
-~/scripts/combine-files.sh -p ./src/lib/cms -i node_modules -i tests
+source ~/.bashrc
+```
+
+Alternatively, you can load the scripts just for the current shell without changing any config:
+
+```bash
+source "$HOME/scripts/bootstrap.sh"
 ```
 
 ## Requirements

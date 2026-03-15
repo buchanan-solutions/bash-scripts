@@ -10,6 +10,7 @@ for f in \
   filesummary.sh \
   list-directory.sh \
   text-search.sh \
+  aliases.sh
 do
   [ -f "$BASE_DIR/$f" ] && source "$BASE_DIR/$f"
 done
