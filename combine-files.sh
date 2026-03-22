@@ -19,19 +19,25 @@ GIT_ONLY=false
 CUSTOM_IGNORE_PATTERNS=()
 FOLDER_IGNORE_PATTERNS=()
 FILE_IGNORE_PATTERNS=()
+FILE_GLOB_PATTERNS=()  # glob patterns for -p/--file-pattern mode (e.g. "package.json", "tsconfig.*")
 DEFAULT_IGNORE_DIRS=("node_modules" ".next" ".git" ".github" ".venv" "__ARCHIVE__" ".cursor" ".vscode" "__pycache__")
 ABS_TARGET_PATHS=()
 TARGET_IS_DIR=()  # true/false for each path
 
 show_help() {
     echo "Usage: $0 [--git-changes] [-i <ignore_pattern>]... [-d|-f] <path1> [[-d|-f] <path2>] ..."
+    echo "   OR: $0 [-p <glob>]... [<root_dir>]   # find-by-pattern mode"
     echo
     echo "Arguments:"
-    echo "  <path>           One or more file or directory paths (required, positional)"
+    echo "  <path>           One or more file or directory paths (required in path mode)"
     echo "                   Precede each path with -d (directory) or -f (file) to specify type"
     echo "                   If omitted, type is auto-detected (warns if not found)"
+    echo "  <root_dir>       In find-by-pattern mode (-p): root to search (default: current dir)"
     echo
     echo "Options:"
+    echo "  -p, --file-pattern <glob>  Find-by-pattern mode: recursively find files matching glob(s)"
+    echo "                             Globs match against basename (e.g. package.json, tsconfig.*)"
+    echo "                             Can be used multiple times. Output saved to root directory."
     echo "  --git-changes    Only include staged and unstaged modified files"
     echo "  -d <path>        Explicitly mark next path as a directory"
     echo "  -f <path>        Explicitly mark next path as a file"
@@ -52,6 +58,10 @@ show_help() {
     echo "  $0 ./src -i 'folder:^test' -i 'file:\\.log$'"
     echo "  $0 ./src -i 'folder:.*test.*' -i 'file:.*\\.(log|tmp)$'"
     echo "  $0 some/relative/path/1 some/relative/path/2"
+    echo "  # Find-by-pattern: combine all package.json and tsconfig.* from current dir down"
+    echo "  $0 -p package.json -p 'tsconfig.*'"
+    echo "  $0 -p package.json -p 'tsconfig.*' .     # same, explicit root"
+    echo "  $0 ./src -p package.json               # search under ./src only"
     echo
     echo "Default ignored directories:"
     echo "  node_modules, .next, .git, .github, .venv, __ARCHIVE__, .cursor, .vscode, __pycache__"
@@ -69,6 +79,18 @@ is_git_repo() {
     git rev-parse --is-inside-work-tree >/dev/null 2>&1
 }
 
+# Returns 0 (true) if basename matches any FILE_GLOB_PATTERNS glob
+matches_file_glob() {
+    local basename="$1"
+    local pattern
+    for pattern in "${FILE_GLOB_PATTERNS[@]}"; do
+        if [[ "$basename" == $pattern ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # --- Logic Functions ---
 
 parse_args() {
@@ -83,6 +105,10 @@ parse_args() {
     local next_type=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            -p|--file-pattern)
+                FILE_GLOB_PATTERNS+=("$2")
+                shift 2
+                ;;
             --git-changes)
                 GIT_ONLY=true
                 shift
@@ -115,8 +141,19 @@ parse_args() {
         esac
     done
 
+    # In find-by-pattern mode, path is optional (default: current dir)
     if [ ${#TARGET_PATHS[@]} -eq 0 ]; then
-        error_exit "You must specify at least one path as an argument"
+        if [ ${#FILE_GLOB_PATTERNS[@]} -gt 0 ]; then
+            TARGET_PATHS=(".")
+            TARGET_TYPES=("dir")
+        else
+            error_exit "You must specify at least one path as an argument (or use -p for find-by-pattern mode)"
+        fi
+    fi
+
+    # In find-by-pattern mode, only one root dir is allowed
+    if [ ${#FILE_GLOB_PATTERNS[@]} -gt 0 ] && [ ${#TARGET_PATHS[@]} -gt 1 ]; then
+        error_exit "Find-by-pattern mode (-p) accepts at most one root directory"
     fi
 }
 
@@ -183,6 +220,13 @@ normalize_and_validate_paths() {
             continue
         fi
         
+        # In find-by-pattern mode, root must be a directory
+        if [ ${#FILE_GLOB_PATTERNS[@]} -gt 0 ] && [ "$is_file" = true ]; then
+            echo "⚠️  Warning: Find-by-pattern mode requires a directory root; skipping file: '$path'" >&2
+            idx=$((idx + 1))
+            continue
+        fi
+
         # Check type constraint if specified
         if [ -n "$expected_type" ]; then
             if [ "$expected_type" = "dir" ] && [ "$is_file" = true ]; then
@@ -342,15 +386,18 @@ get_files() {
 
 combine_files() {
     # Determine output location based on rule:
+    # - Find-by-pattern mode: save to root directory
     # - If exactly 1 valid argument AND it is a directory → save to that directory
     # - Else → save to current working directory
     local output_dir
-    if [ ${#ABS_TARGET_PATHS[@]} -eq 1 ] && [ "${TARGET_IS_DIR[0]}" = "true" ]; then
+    if [ ${#FILE_GLOB_PATTERNS[@]} -gt 0 ]; then
+        output_dir="${ABS_TARGET_PATHS[0]}"
+    elif [ ${#ABS_TARGET_PATHS[@]} -eq 1 ] && [ "${TARGET_IS_DIR[0]}" = "true" ]; then
         output_dir="${ABS_TARGET_PATHS[0]}"
     else
         output_dir="$(pwd)"
     fi
-    
+
     local output_file="$output_dir/combined.txt"
 
     # Remove existing combined.txt if it exists
@@ -359,10 +406,37 @@ combine_files() {
         rm "$output_file"
     fi
 
-    # Collect all files from all paths
     local all_files=()
     local idx=0
-    
+
+    # --- Find-by-pattern mode ---
+    if [ ${#FILE_GLOB_PATTERNS[@]} -gt 0 ]; then
+        local root="${ABS_TARGET_PATHS[0]}"
+        echo "Finding files matching: ${FILE_GLOB_PATTERNS[*]} under: $root"
+
+        # Build find -prune for default ignore dirs (avoids traversing node_modules etc.)
+        local find_prune=()
+        for dir in "${DEFAULT_IGNORE_DIRS[@]}"; do
+            [ ${#find_prune[@]} -gt 0 ] && find_prune+=(-o)
+            find_prune+=(-name "$dir")
+        done
+
+        # Build find -name for glob patterns (filter at find level, not in bash)
+        local find_names=()
+        for gp in "${FILE_GLOB_PATTERNS[@]}"; do
+            [ ${#find_names[@]} -gt 0 ] && find_names+=(-o)
+            find_names+=(-name "$gp")
+        done
+
+        # find: prune ignored dirs, then only emit files matching globs (streaming, no buffer)
+        while IFS= read -r file || [ -n "$file" ]; do
+            [ -z "$file" ] && continue
+            if ! should_skip "$file" "$root" "true"; then
+                all_files+=("$file")
+            fi
+        done < <(find "$root" -type d \( "${find_prune[@]}" \) -prune -o -type f \( "${find_names[@]}" \) -print 2>/dev/null | sort) || true
+    else
+    # --- Path mode ---
     for abs_target_path in "${ABS_TARGET_PATHS[@]}"; do
         local target_is_dir="${TARGET_IS_DIR[$idx]}"
         
@@ -393,12 +467,15 @@ combine_files() {
                 fi
             done <<< "$files_from_target"
         fi
-        
+
         idx=$((idx + 1))
     done
+    fi
 
     if [ ${#all_files[@]} -eq 0 ]; then
-        if [ "$GIT_ONLY" = true ]; then
+        if [ ${#FILE_GLOB_PATTERNS[@]} -gt 0 ]; then
+            echo "No files matching ${FILE_GLOB_PATTERNS[*]} found under the specified root"
+        elif [ "$GIT_ONLY" = true ]; then
             echo "No git-modified files found in any of the specified paths"
         else
             echo "No files found in any of the specified paths"
