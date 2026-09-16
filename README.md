@@ -13,8 +13,16 @@ git clone https://github.com/buchanan-solutions/bash-scripts ~/scripts
 Add the bootstrap script to your shell startup file so all commands and aliases are available in every new terminal:
 
 ```bash
+~/scripts/install.sh
+```
+
+Or manually:
+
+```bash
 echo 'if [ -f "$HOME/scripts/bootstrap.sh" ]; then source "$HOME/scripts/bootstrap.sh"; fi' >> ~/.bashrc
 ```
+
+The installer writes a managed block in `~/.bashrc` between `# <-- bash-scripts:start -->` and `# <-- bash-scripts:end -->`, so re-running it is safe and idempotent.
 
 Reload your current terminal session so the changes take effect immediately:
 

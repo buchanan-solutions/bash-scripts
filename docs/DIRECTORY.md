@@ -8,6 +8,8 @@
     - [combine\_files()](#combine_files)
   - [dockersummary.sh](#dockersummarysh)
     - [dockersummary()](#dockersummary)
+  - [inspect-docker-logs.sh](#inspect-docker-logssh)
+    - [inspect_docker_logs()](#inspect_docker_logs)
   - [list-directory.sh](#list-directorysh)
     - [list\_dir()](#list_dir)
   - [text-search.sh](#text-searchsh)
@@ -83,6 +85,25 @@ dockersummary myapp
 ### dockersummary()
 
 Takes an optional filter string. With no arguments, lists all running containers with stack info; with one argument, lists only containers whose name matches the filter. Output is tabular via `column -t`.
+
+---
+
+## inspect-docker-logs.sh
+
+Lists the largest Docker container JSON log files under `/var/lib/docker/containers`, shows container name and image in a table, and optionally truncates selected logs. Requires `sudo` for scanning and truncation.
+
+**Example:**
+
+```bash
+inspect_docker_logs
+inspect_docker_logs 20
+inspect-docker-logs
+inspect_docker_logs --help
+```
+
+### inspect_docker_logs()
+
+When sourced (e.g. via bootstrap), this is the function you call. Accepts an optional `TOP_N` (default 10). After listing logs, prompts for numbered selections to truncate. The alias `inspect-docker-logs` is also available.
 
 ---
 

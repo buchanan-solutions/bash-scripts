@@ -6,6 +6,7 @@ for f in \
   env_vars.sh \
   combine-files.sh \
   dockersummary.sh \
+  inspect-docker-logs.sh \
   user_secrets.sh \
   filesummary.sh \
   list-directory.sh \
